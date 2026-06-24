@@ -2,8 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { queryFormValues } from '../api/klaviyo';
 import MetricCard from './MetricCard';
 
-const CONVERSION_METRIC_ID = import.meta.env.VITE_KLAVIYO_CONVERSION_METRIC_ID;
-
 // Forms: submissions metric
 const FORM_STATS = [
   'viewed_form',
@@ -20,7 +18,7 @@ export default function FormsPanel({ loading }) {
       setFetching(true);
       setError(null);
       try {
-        const values = await queryFormValues({ statistics: FORM_STATS, timeframe: 'last_365_days', conversionMetricId: CONVERSION_METRIC_ID });
+        const values = await queryFormValues({ statistics: FORM_STATS, timeframe: 'last_365_days' });
         setReportData(values);
       } catch (err) {
         setError(err.message);

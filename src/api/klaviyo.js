@@ -140,7 +140,7 @@ export async function queryCampaignSeries({ statistics, filter, timeframe = 'las
 }
 
 // Form values report
-export async function queryFormValues({ statistics, filter, timeframe = 'last_30_days', conversionMetricId }) {
+export async function queryFormValues({ statistics, filter, timeframe = 'last_30_days' }) {
   const body = {
     data: {
       type: 'form-values-report',
@@ -148,7 +148,6 @@ export async function queryFormValues({ statistics, filter, timeframe = 'last_30
         statistics,
         ...(filter && { filter }),
         timeframe: { key: timeframe },
-        ...(conversionMetricId && { conversion_metric_id: conversionMetricId }),
       },
     },
   };
