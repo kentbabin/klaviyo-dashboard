@@ -1,6 +1,11 @@
 // Use Vercel proxy to avoid CORS issues
+const PROXY_BASE = '/api/proxy';
+
 async function klaviyoFetch(endpoint, options = {}) {
-  const url = `/api${endpoint}`;
+  // Build URL with path as query param
+  const mainPath = endpoint.split('?')[0];
+  const queryString = endpoint.includes('?') ? endpoint.split('?')[1] : '';
+  const url = `${PROXY_BASE}?path=${encodeURIComponent(mainPath)}${queryString ? '&' + queryString : ''}`;
   
   const response = await fetch(url, {
     ...options,
