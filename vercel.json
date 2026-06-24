@@ -1,5 +1,5 @@
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/proxy/:path*" }
+    { "source": "/api/:path*", "destination": "https://a.klaviyo.com/api/:path*" }
   ]
 }
