@@ -30,10 +30,18 @@ async function klaviyoFetch(endpoint, options = {}, retryCount = 0) {
 
   const response = await fetch(url, fetchOptions);
 
-  // Handle rate limiting with exponential backoff
+  // Handle rate limiting: respect Retry-After header, then exponential backoff with jitter
   if (response.status === 429 && retryCount < MAX_RETRIES) {
-    const delay = BASE_DELAY_MS * Math.pow(2, retryCount);
-    await new Promise((resolve) => setTimeout(resolve, delay));
+    const retryAfter = response.headers.get('Retry-After');
+    let delay;
+    if (retryAfter) {
+      delay = parseInt(retryAfter, 10) * 1000;
+    } else {
+      delay = BASE_DELAY_MS * Math.pow(2, retryCount);
+    }
+    // Add jitter (±25%) to avoid thundering herd
+    const jitter = delay * 0.25 * (Math.random() * 2 - 1);
+    await new Promise((resolve) => setTimeout(resolve, delay + jitter));
     return klaviyoFetch(endpoint, options, retryCount + 1);
   }
 
