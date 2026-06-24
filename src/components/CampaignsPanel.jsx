@@ -39,10 +39,9 @@ export default function CampaignsPanel({ campaigns, loading }) {
       setError(null);
       try {
         const filter = `equals(campaign_id,'${selectedCampaign.id}')`;
-        const [values, series] = await Promise.all([
-          queryCampaignValues({ statistics: CAMPAIGN_STATS, filter, timeframe: 'last_30_days', conversionMetricId: CONVERSION_METRIC_ID }),
-          queryCampaignSeries({ statistics: ['recipients', 'opens', 'clicks'], filter, timeframe: 'last_30_days', interval: 'daily', conversionMetricId: CONVERSION_METRIC_ID }),
-        ]);
+        const values = await queryCampaignValues({ statistics: CAMPAIGN_STATS, filter, timeframe: 'last_30_days', conversionMetricId: CONVERSION_METRIC_ID });
+        await new Promise((r) => setTimeout(r, 300));
+        const series = await queryCampaignSeries({ statistics: ['recipients', 'opens', 'clicks'], filter, timeframe: 'last_30_days', interval: 'daily', conversionMetricId: CONVERSION_METRIC_ID });
         setReportData(values);
         setSeriesData(series);
       } catch (err) {
@@ -77,25 +76,31 @@ export default function CampaignsPanel({ campaigns, loading }) {
   const seriesChartData = useMemo(() => {
     if (!seriesData?.data?.attributes?.results?.length) return [];
     const seriesResults = seriesData.data.attributes.results;
-    const dateMap = {};
-    
+
+    let maxLen = 0;
     seriesResults.forEach((r) => {
-      const stats = r.statistics;
-      const len = stats.recipients?.length || 0;
-      for (let i = 0; i < len; i++) {
-        if (!dateMap[i]) dateMap[i] = { index: i };
-        Object.entries(stats).forEach(([key, arr]) => {
+      Object.values(r.statistics).forEach((arr) => {
+        if (Array.isArray(arr) && arr.length > maxLen) maxLen = arr.length;
+      });
+    });
+
+    const rows = [];
+    for (let i = 0; i < maxLen; i++) {
+      const row = { index: i, displayDate: `Day ${i + 1}` };
+      seriesResults.forEach((r) => {
+        Object.entries(r.statistics).forEach(([key, arr]) => {
           if (Array.isArray(arr)) {
-            dateMap[i][key] = (dateMap[i][key] || 0) + (arr[i] || 0);
+            const val = arr[i];
+            if (val !== null && val !== undefined && !isNaN(parseFloat(val))) {
+              row[key] = (row[key] || 0) + parseFloat(val);
+            }
           }
         });
-      }
-    });
-    
-    return Object.values(dateMap).sort((a, b) => a.index - b.index).map((row) => ({
-      ...row,
-      displayDate: `Day ${row.index + 1}`,
-    }));
+      });
+      rows.push(row);
+    }
+
+    return rows;
   }, [seriesData]);
 
   const formatLabel = (key) => key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());

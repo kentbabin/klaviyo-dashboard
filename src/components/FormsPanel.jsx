@@ -31,19 +31,17 @@ export default function FormsPanel({ loading }) {
       setFetching(true);
       setError(null);
       try {
-        const [values, series] = await Promise.all([
-          queryFormValues({ statistics: FORM_STATS, timeframe: 'last_30_days', conversionMetricId: CONVERSION_METRIC_ID }),
-          queryFormSeries({ statistics: ['form_submissions'], timeframe: 'last_30_days', interval: 'daily', conversionMetricId: CONVERSION_METRIC_ID }),
-        ]);
+        const values = await queryFormValues({ statistics: FORM_STATS, timeframe: 'last_30_days', conversionMetricId: CONVERSION_METRIC_ID });
+        await new Promise((r) => setTimeout(r, 300));
+        const series = await queryFormSeries({ statistics: ['form_submissions'], timeframe: 'last_30_days', interval: 'daily', conversionMetricId: CONVERSION_METRIC_ID });
         setReportData(values);
         setSeriesData(series);
       } catch (err) {
         // Try fallback stats
         try {
-          const [values, series] = await Promise.all([
-            queryFormValues({ statistics: FORM_STATS_FALLBACK, timeframe: 'last_30_days', conversionMetricId: CONVERSION_METRIC_ID }),
-            queryFormSeries({ statistics: ['recipients'], timeframe: 'last_30_days', interval: 'daily', conversionMetricId: CONVERSION_METRIC_ID }),
-          ]);
+          const values = await queryFormValues({ statistics: FORM_STATS_FALLBACK, timeframe: 'last_30_days', conversionMetricId: CONVERSION_METRIC_ID });
+          await new Promise((r) => setTimeout(r, 300));
+          const series = await queryFormSeries({ statistics: ['recipients'], timeframe: 'last_30_days', interval: 'daily', conversionMetricId: CONVERSION_METRIC_ID });
           setReportData(values);
           setSeriesData(series);
         } catch (err2) {
@@ -71,16 +69,31 @@ export default function FormsPanel({ loading }) {
 
   const seriesByDate = useMemo(() => {
     if (!seriesData?.data?.attributes?.results?.length) return [];
-    const rows = seriesData.data.attributes.results;
-    const dateMap = {};
-    rows.forEach((r) => {
-      const date = r.groupings?.date || 'unknown';
-      if (!dateMap[date]) dateMap[date] = { date };
-      Object.entries(r.statistics).forEach(([key, val]) => {
-        dateMap[date][key] = (dateMap[date][key] || 0) + parseFloat(val || 0);
+    const results = seriesData.data.attributes.results;
+
+    let maxLen = 0;
+    results.forEach((r) => {
+      Object.values(r.statistics).forEach((arr) => {
+        if (Array.isArray(arr) && arr.length > maxLen) maxLen = arr.length;
       });
     });
-    return Object.values(dateMap).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const rows = [];
+    for (let i = 0; i < maxLen; i++) {
+      const row = { index: i, displayDate: `Day ${i + 1}` };
+      results.forEach((r) => {
+        Object.entries(r.statistics).forEach(([key, arr]) => {
+          if (Array.isArray(arr)) {
+            const val = arr[i];
+            if (val !== null && val !== undefined && !isNaN(parseFloat(val))) {
+              row[key] = (row[key] || 0) + parseFloat(val);
+            }
+          }
+        });
+      });
+      rows.push(row);
+    }
+    return rows;
   }, [seriesData]);
 
   const formatLabel = (key) => key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());

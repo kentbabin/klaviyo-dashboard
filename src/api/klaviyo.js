@@ -1,12 +1,15 @@
 // Use Vercel proxy to avoid CORS issues
 const PROXY_BASE = '/api/proxy';
 
-async function klaviyoFetch(endpoint, options = {}) {
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 1000;
+
+async function klaviyoFetch(endpoint, options = {}, retryCount = 0) {
   // Build URL with path as query param
   const mainPath = endpoint.split('?')[0];
   const queryString = endpoint.includes('?') ? endpoint.split('?')[1] : '';
   const url = `${PROXY_BASE}?path=${encodeURIComponent(mainPath)}${queryString ? '&' + queryString : ''}`;
-  
+
   const fetchOptions = {
     ...options,
     headers: {
@@ -15,16 +18,23 @@ async function klaviyoFetch(endpoint, options = {}) {
       ...options.headers,
     },
   };
-  
+
   // Don't send body on GET/HEAD requests
   if (fetchOptions.method && fetchOptions.method !== 'GET' && fetchOptions.method !== 'HEAD') {
     // body is already set in options
   } else {
     delete fetchOptions.body;
   }
-  
+
   const response = await fetch(url, fetchOptions);
-  
+
+  // Handle rate limiting with exponential backoff
+  if (response.status === 429 && retryCount < MAX_RETRIES) {
+    const delay = BASE_DELAY_MS * Math.pow(2, retryCount);
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    return klaviyoFetch(endpoint, options, retryCount + 1);
+  }
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
     const detail = error?.errors?.[0]?.detail || error?.error || error?.message || `API error: ${response.status}`;
@@ -38,9 +48,18 @@ export async function getFlows() {
   return klaviyoFetch('/flows?page[size]=50');
 }
 
-// Get all campaigns (requires channel filter)
+// Get all campaigns (no filter - fetch all, then filter client-side if needed)
 export async function getCampaigns(channel = 'email') {
-  return klaviyoFetch(`/campaigns?filter=equals(messages.channel,'${channel}')&page[size]=100`);
+  // Fetch campaigns without filter to avoid filter-syntax errors, filter client-side
+  const data = await klaviyoFetch(`/campaigns?page[size]=100`);
+  if (channel && data?.data) {
+    const filtered = data.data.filter((c) => {
+      const msgs = c.attributes?.messages || [];
+      return msgs.some((m) => m.channel === channel);
+    });
+    return { ...data, data: filtered };
+  }
+  return data;
 }
 
 // Query Campaign Values (reporting)
