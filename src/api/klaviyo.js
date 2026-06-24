@@ -1,21 +1,25 @@
-const API_BASE = 'https://a.klaviyo.com/api';
+// Use Vercel proxy to avoid CORS issues
+const PROXY_BASE = '/api/proxy';
 const REVISION = '2026-04-15';
 
 async function klaviyoFetch(endpoint, options = {}) {
-  const url = `${API_BASE}${endpoint}`;
+  // Build the full path for the proxy
+  const separator = endpoint.includes('?') ? '&' : '?';
+  const proxyPath = `${endpoint}${separator}revision=${REVISION}`;
+  const url = `${PROXY_BASE}/${proxyPath}`;
+  
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Authorization': `Klaviyo-API-Key ${import.meta.env.VITE_KLAVIYO_API_KEY}`,
-      'revision': REVISION,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       ...options.headers,
     },
   });
+  
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    const detail = error?.errors?.[0]?.detail || error.message || `API error: ${response.status}`;
+    const detail = error?.errors?.[0]?.detail || error?.error || error.message || `API error: ${response.status}`;
     throw new Error(detail);
   }
   return response.json();
