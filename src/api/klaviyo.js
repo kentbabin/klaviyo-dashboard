@@ -1,3 +1,5 @@
+import { getCached, setCached } from './cache';
+
 // Use Vercel proxy to avoid CORS issues
 const PROXY_BASE = '/api/proxy';
 
@@ -43,14 +45,24 @@ async function klaviyoFetch(endpoint, options = {}, retryCount = 0) {
   return response.json();
 }
 
-// Get all flows
+// Get all flows (cached for 5 minutes)
 export async function getFlows() {
-  return klaviyoFetch('/flows?page[size]=50');
+  const cacheKey = 'flows';
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await klaviyoFetch('/flows?page[size]=50');
+  setCached(cacheKey, data);
+  return data;
 }
 
-// Get all campaigns (channel filter is required by Klaviyo API)
+// Get all campaigns (channel filter is required by Klaviyo API, cached for 5 minutes)
 export async function getCampaigns(channel = 'email') {
-  return klaviyoFetch(`/campaigns?filter=equals(messages.channel,'${channel}')&page[size]=100`);
+  const cacheKey = `campaigns_${channel}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await klaviyoFetch(`/campaigns?filter=equals(messages.channel,'${channel}')&page[size]=100`);
+  setCached(cacheKey, data);
+  return data;
 }
 
 // Query Campaign Values (reporting)

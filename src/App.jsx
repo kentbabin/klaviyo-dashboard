@@ -22,7 +22,7 @@ export default function App() {
       const flowsRes = await getFlows();
       const campaignsRes = await getCampaigns('email');
       setFlows((flowsRes.data || []).filter((f) => f.attributes?.status !== 'draft'));
-      setCampaigns((campaignsRes.data || []).filter((c) => !['draft', 'scheduled', 'cancelled'].includes(c.attributes?.status)));
+      setCampaigns((campaignsRes.data || []).filter((c) => !['Draft', 'Scheduled', 'Cancelled'].includes(c.attributes?.status)));
     } catch (err) {
       setError(err.message);
     } finally {

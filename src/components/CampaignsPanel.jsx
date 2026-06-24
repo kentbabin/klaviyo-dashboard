@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { queryCampaignValues, queryCampaignSeries } from '../api/klaviyo';
+import { queryCampaignValues } from '../api/klaviyo';
 import MetricCard from './MetricCard';
-import TimeSeriesChart from './TimeSeriesChart';
 
 const CONVERSION_METRIC_ID = import.meta.env.VITE_KLAVIYO_CONVERSION_METRIC_ID;
 
@@ -17,7 +16,6 @@ const CAMPAIGN_STATS = [
 export default function CampaignsPanel({ campaigns, loading }) {
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [reportData, setReportData] = useState(null);
-  const [seriesData, setSeriesData] = useState(null);
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState(null);
 
@@ -36,10 +34,7 @@ export default function CampaignsPanel({ campaigns, loading }) {
       try {
         const filter = `equals(campaign_id,'${selectedCampaign.id}')`;
         const values = await queryCampaignValues({ statistics: CAMPAIGN_STATS, filter, timeframe: 'last_30_days', conversionMetricId: CONVERSION_METRIC_ID });
-        await new Promise((r) => setTimeout(r, 300));
-        const series = await queryCampaignSeries({ statistics: ['opens_unique', 'clicks_unique', 'delivered'], filter, timeframe: 'last_30_days', interval: 'daily', conversionMetricId: CONVERSION_METRIC_ID });
         setReportData(values);
-        setSeriesData(series);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -63,36 +58,6 @@ export default function CampaignsPanel({ campaigns, loading }) {
     });
     return merged;
   }, [results]);
-
-  const seriesChartData = useMemo(() => {
-    if (!seriesData?.data?.attributes?.results?.length) return [];
-    const seriesResults = seriesData.data.attributes.results;
-
-    let maxLen = 0;
-    seriesResults.forEach((r) => {
-      Object.values(r.statistics).forEach((arr) => {
-        if (Array.isArray(arr) && arr.length > maxLen) maxLen = arr.length;
-      });
-    });
-
-    const rows = [];
-    for (let i = 0; i < maxLen; i++) {
-      const row = { index: i, displayDate: `Day ${i + 1}` };
-      seriesResults.forEach((r) => {
-        Object.entries(r.statistics).forEach(([key, arr]) => {
-          if (Array.isArray(arr)) {
-            const val = arr[i];
-            if (val !== null && val !== undefined && !isNaN(parseFloat(val))) {
-              row[key] = (row[key] || 0) + parseFloat(val);
-            }
-          }
-        });
-      });
-      rows.push(row);
-    }
-
-    return rows;
-  }, [seriesData]);
 
   const formatLabel = (key) => {
     const label = key
@@ -129,27 +94,15 @@ export default function CampaignsPanel({ campaigns, loading }) {
       )}
 
       {!fetching && results.length > 0 && (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {CAMPAIGN_STATS.map((stat) => (
-              <MetricCard
-                key={stat}
-                label={formatLabel(stat)}
-                value={aggregateStats[stat]}
-                isRate={stat.includes('rate')}
-              />
-            ))}
-          </div>
-
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-            <h3 className="text-sm font-medium text-slate-300 mb-4">Performance Over Time (30 days)</h3>
-            <TimeSeriesChart
-              seriesData={seriesChartData}
-              chartMetrics={['opens_unique', 'clicks_unique', 'delivered']}
-              formatLabel={formatLabel}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {CAMPAIGN_STATS.map((stat) => (
+            <MetricCard
+              key={stat}
+              label={formatLabel(stat)}
+              value={aggregateStats[stat]}
             />
-          </div>
-        </>
+          ))}
+        </div>
       )}
 
       {!fetching && selectedCampaign && results.length === 0 && (
