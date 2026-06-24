@@ -7,15 +7,11 @@ const CONVERSION_METRIC_ID = import.meta.env.VITE_KLAVIYO_CONVERSION_METRIC_ID;
 
 const CAMPAIGN_STATS = [
   'recipients',
-  'opens',
-  'open_rate',
-  'clicks',
-  'click_rate',
+  'delivered',
+  'opens_unique',
+  'clicks_unique',
   'bounced',
-  'bounce_rate',
   'unsubscribes',
-  'unsubscribe_rate',
-  'delivery_rate',
 ];
 
 export default function CampaignsPanel({ campaigns, loading }) {
@@ -41,7 +37,7 @@ export default function CampaignsPanel({ campaigns, loading }) {
         const filter = `equals(campaign_id,'${selectedCampaign.id}')`;
         const values = await queryCampaignValues({ statistics: CAMPAIGN_STATS, filter, timeframe: 'last_30_days', conversionMetricId: CONVERSION_METRIC_ID });
         await new Promise((r) => setTimeout(r, 300));
-        const series = await queryCampaignSeries({ statistics: ['recipients', 'opens', 'clicks'], filter, timeframe: 'last_30_days', interval: 'daily', conversionMetricId: CONVERSION_METRIC_ID });
+        const series = await queryCampaignSeries({ statistics: ['opens_unique', 'clicks_unique', 'delivered'], filter, timeframe: 'last_30_days', interval: 'daily', conversionMetricId: CONVERSION_METRIC_ID });
         setReportData(values);
         setSeriesData(series);
       } catch (err) {
@@ -65,12 +61,7 @@ export default function CampaignsPanel({ campaigns, loading }) {
         }
       });
     });
-    const out = { ...merged };
-    if (out.recipients && out.opens) out.open_rate = out.opens / out.recipients;
-    if (out.recipients && out.clicks) out.click_rate = out.clicks / out.recipients;
-    if (out.recipients && out.bounced) out.bounce_rate = out.bounced / out.recipients;
-    if (out.recipients && out.unsubscribes) out.unsubscribe_rate = out.unsubscribes / out.recipients;
-    return out;
+    return merged;
   }, [results]);
 
   const seriesChartData = useMemo(() => {
@@ -103,7 +94,14 @@ export default function CampaignsPanel({ campaigns, loading }) {
     return rows;
   }, [seriesData]);
 
-  const formatLabel = (key) => key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  const formatLabel = (key) => {
+    const label = key
+      .replace(/_unique/g, ' unique')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+      .replace(/^Unique /, 'Unique ');
+    return label;
+  };
 
   return (
     <div className="space-y-6">
@@ -147,7 +145,7 @@ export default function CampaignsPanel({ campaigns, loading }) {
             <h3 className="text-sm font-medium text-slate-300 mb-4">Performance Over Time (30 days)</h3>
             <TimeSeriesChart
               seriesData={seriesChartData}
-              chartMetrics={['recipients', 'opens', 'clicks']}
+              chartMetrics={['opens_unique', 'clicks_unique', 'delivered']}
               formatLabel={formatLabel}
             />
           </div>

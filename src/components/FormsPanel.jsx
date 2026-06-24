@@ -7,17 +7,8 @@ const CONVERSION_METRIC_ID = import.meta.env.VITE_KLAVIYO_CONVERSION_METRIC_ID;
 
 // Forms: submissions metric
 const FORM_STATS = [
-  'form_submissions',
-  'form_submission_rate',
-  'form_views',
-  'form_view_rate',
-];
-
-// Fallback if API uses different names
-const FORM_STATS_FALLBACK = [
-  'recipients',
-  'opens',
-  'open_rate',
+  'viewed_form',
+  'submits',
 ];
 
 export default function FormsPanel({ loading }) {
@@ -33,20 +24,11 @@ export default function FormsPanel({ loading }) {
       try {
         const values = await queryFormValues({ statistics: FORM_STATS, timeframe: 'last_30_days', conversionMetricId: CONVERSION_METRIC_ID });
         await new Promise((r) => setTimeout(r, 300));
-        const series = await queryFormSeries({ statistics: ['form_submissions'], timeframe: 'last_30_days', interval: 'daily', conversionMetricId: CONVERSION_METRIC_ID });
+        const series = await queryFormSeries({ statistics: ['submits'], timeframe: 'last_30_days', interval: 'daily', conversionMetricId: CONVERSION_METRIC_ID });
         setReportData(values);
         setSeriesData(series);
       } catch (err) {
-        // Try fallback stats
-        try {
-          const values = await queryFormValues({ statistics: FORM_STATS_FALLBACK, timeframe: 'last_30_days', conversionMetricId: CONVERSION_METRIC_ID });
-          await new Promise((r) => setTimeout(r, 300));
-          const series = await queryFormSeries({ statistics: ['recipients'], timeframe: 'last_30_days', interval: 'daily', conversionMetricId: CONVERSION_METRIC_ID });
-          setReportData(values);
-          setSeriesData(series);
-        } catch (err2) {
-          setError(err2.message);
-        }
+        setError(err.message);
       } finally {
         setFetching(false);
       }

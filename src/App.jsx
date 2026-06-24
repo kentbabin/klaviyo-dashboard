@@ -20,13 +20,9 @@ export default function App() {
     try {
       // Fetch flows first, then campaigns (avoid concurrent 429s on initial load)
       const flowsRes = await getFlows();
-      setFlows(flowsRes.data || []);
-      
-      // Small delay before second request
-      await new Promise((r) => setTimeout(r, 500));
-      
       const campaignsRes = await getCampaigns('email');
-      setCampaigns(campaignsRes.data || []);
+      setFlows((flowsRes.data || []).filter((f) => f.attributes?.status !== 'draft'));
+      setCampaigns((campaignsRes.data || []).filter((c) => !['draft', 'scheduled', 'cancelled'].includes(c.attributes?.status)));
     } catch (err) {
       setError(err.message);
     } finally {

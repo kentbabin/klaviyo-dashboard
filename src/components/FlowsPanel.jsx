@@ -7,15 +7,11 @@ const CONVERSION_METRIC_ID = import.meta.env.VITE_KLAVIYO_CONVERSION_METRIC_ID;
 
 const FLOW_STATS = [
   'recipients',
-  'opens',
-  'open_rate',
-  'clicks',
-  'click_rate',
+  'delivered',
+  'opens_unique',
+  'clicks_unique',
   'bounced',
-  'bounce_rate',
   'unsubscribes',
-  'unsubscribe_rate',
-  'delivery_rate',
 ];
 
 export default function FlowsPanel({ flows, loading }) {
@@ -41,7 +37,7 @@ export default function FlowsPanel({ flows, loading }) {
         const filter = `equals(flow_id,'${selectedFlow.id}')`;
         const values = await queryFlowValues({ statistics: FLOW_STATS, filter, timeframe: 'last_30_days', conversionMetricId: CONVERSION_METRIC_ID });
         await new Promise((r) => setTimeout(r, 300));
-        const series = await queryFlowSeries({ statistics: ['recipients', 'opens', 'clicks'], filter, timeframe: 'last_30_days', interval: 'daily', conversionMetricId: CONVERSION_METRIC_ID });
+        const series = await queryFlowSeries({ statistics: ['opens_unique', 'clicks_unique', 'delivered'], filter, timeframe: 'last_30_days', interval: 'daily', conversionMetricId: CONVERSION_METRIC_ID });
         setReportData(values);
         setSeriesData(series);
       } catch (err) {
@@ -67,13 +63,7 @@ export default function FlowsPanel({ flows, loading }) {
         }
       });
     });
-    // Recalculate rates
-    const out = { ...merged };
-    if (out.recipients && out.opens) out.open_rate = out.opens / out.recipients;
-    if (out.recipients && out.clicks) out.click_rate = out.clicks / out.recipients;
-    if (out.recipients && out.bounced) out.bounce_rate = out.bounced / out.recipients;
-    if (out.recipients && out.unsubscribes) out.unsubscribe_rate = out.unsubscribes / out.recipients;
-    return out;
+    return merged;
   }, [results]);
 
   // Series: each result has statistics with arrays (daily values indexed by position)
@@ -110,7 +100,14 @@ export default function FlowsPanel({ flows, loading }) {
     return rows;
   }, [seriesData]);
 
-  const formatLabel = (key) => key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  const formatLabel = (key) => {
+    const label = key
+      .replace(/_unique/g, ' unique')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+      .replace(/^Unique /, 'Unique ');
+    return label;
+  };
 
   return (
     <div className="space-y-6">
@@ -145,7 +142,6 @@ export default function FlowsPanel({ flows, loading }) {
                 key={stat}
                 label={formatLabel(stat)}
                 value={aggregateStats[stat]}
-                isRate={stat.includes('rate')}
               />
             ))}
           </div>
@@ -154,7 +150,7 @@ export default function FlowsPanel({ flows, loading }) {
             <h3 className="text-sm font-medium text-slate-300 mb-4">Performance Over Time (30 days)</h3>
             <TimeSeriesChart
               seriesData={seriesChartData}
-              chartMetrics={['recipients', 'opens', 'clicks']}
+              chartMetrics={['opens_unique', 'clicks_unique', 'delivered']}
               formatLabel={formatLabel}
             />
           </div>
