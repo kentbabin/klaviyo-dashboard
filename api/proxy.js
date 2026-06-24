@@ -1,12 +1,22 @@
 export default function handler(req, res) {
   const apiPath = req.query.path || req.query['path[]'];
   const path = Array.isArray(apiPath) ? apiPath.join('/') : String(apiPath || '');
-  
+
   if (!path) {
     return res.status(400).json({ error: 'Missing path parameter' });
   }
 
-  const url = `https://a.klaviyo.com/api/${path}`;
+  // Build URL with all query params except 'path' (which is already used)
+  const url = new URL(`https://a.klaviyo.com/api/${path}`);
+  Object.entries(req.query).forEach(([key, value]) => {
+    if (key !== 'path' && key !== 'path[]') {
+      if (Array.isArray(value)) {
+        value.forEach((v) => url.searchParams.append(key, v));
+      } else {
+        url.searchParams.append(key, value);
+      }
+    }
+  });
 
   const fetchOptions = {
     method: req.method,
@@ -23,7 +33,7 @@ export default function handler(req, res) {
     fetchOptions.body = JSON.stringify(req.body);
   }
 
-  fetch(url, fetchOptions)
+  fetch(url.toString(), fetchOptions)
     .then((response) => response.json())
     .then((data) => res.status(200).json(data))
     .catch((err) => res.status(500).json({ error: err.message }));

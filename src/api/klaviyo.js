@@ -48,18 +48,9 @@ export async function getFlows() {
   return klaviyoFetch('/flows?page[size]=50');
 }
 
-// Get all campaigns (no filter - fetch all, then filter client-side if needed)
+// Get all campaigns (channel filter is required by Klaviyo API)
 export async function getCampaigns(channel = 'email') {
-  // Fetch campaigns without filter to avoid filter-syntax errors, filter client-side
-  const data = await klaviyoFetch(`/campaigns?page[size]=100`);
-  if (channel && data?.data) {
-    const filtered = data.data.filter((c) => {
-      const msgs = c.attributes?.messages || [];
-      return msgs.some((m) => m.channel === channel);
-    });
-    return { ...data, data: filtered };
-  }
-  return data;
+  return klaviyoFetch(`/campaigns?filter=equals(messages.channel,'${channel}')&page[size]=100`);
 }
 
 // Query Campaign Values (reporting)
