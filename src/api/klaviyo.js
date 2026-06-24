@@ -7,14 +7,23 @@ async function klaviyoFetch(endpoint, options = {}) {
   const queryString = endpoint.includes('?') ? endpoint.split('?')[1] : '';
   const url = `${PROXY_BASE}?path=${encodeURIComponent(mainPath)}${queryString ? '&' + queryString : ''}`;
   
-  const response = await fetch(url, {
+  const fetchOptions = {
     ...options,
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       ...options.headers,
     },
-  });
+  };
+  
+  // Don't send body on GET/HEAD requests
+  if (fetchOptions.method && fetchOptions.method !== 'GET' && fetchOptions.method !== 'HEAD') {
+    // body is already set in options
+  } else {
+    delete fetchOptions.body;
+  }
+  
+  const response = await fetch(url, fetchOptions);
   
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));

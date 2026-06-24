@@ -8,7 +8,7 @@ export default function handler(req, res) {
 
   const url = `https://a.klaviyo.com/api/${path}`;
 
-  fetch(url, {
+  const fetchOptions = {
     method: req.method,
     headers: {
       'Authorization': `Klaviyo-API-Key ${process.env.VITE_KLAVIYO_API_KEY}`,
@@ -16,8 +16,14 @@ export default function handler(req, res) {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     },
-    ...(req.body && { body: JSON.stringify(req.body) }),
-  })
+  };
+
+  // Only include body for POST/PUT/PATCH
+  if (req.body && (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH')) {
+    fetchOptions.body = JSON.stringify(req.body);
+  }
+
+  fetch(url, fetchOptions)
     .then((response) => response.json())
     .then((data) => res.status(200).json(data))
     .catch((err) => res.status(500).json({ error: err.message }));
