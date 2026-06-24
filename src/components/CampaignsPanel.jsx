@@ -33,7 +33,7 @@ export default function CampaignsPanel({ campaigns, loading }) {
       setError(null);
       try {
         const filter = `equals(campaign_id,'${selectedCampaign.id}')`;
-        const values = await queryCampaignValues({ statistics: CAMPAIGN_STATS, filter, timeframe: 'last_30_days', conversionMetricId: CONVERSION_METRIC_ID });
+        const values = await queryCampaignValues({ statistics: CAMPAIGN_STATS, filter, timeframe: 'last_365_days', conversionMetricId: CONVERSION_METRIC_ID });
         setReportData(values);
       } catch (err) {
         setError(err.message);

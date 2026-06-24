@@ -35,7 +35,7 @@ export default function FlowsPanel({ flows, loading }) {
       setError(null);
       try {
         const filter = `equals(flow_id,'${selectedFlow.id}')`;
-        const values = await queryFlowValues({ statistics: FLOW_STATS, filter, timeframe: 'last_30_days', conversionMetricId: CONVERSION_METRIC_ID });
+        const values = await queryFlowValues({ statistics: FLOW_STATS, filter, timeframe: 'last_365_days', conversionMetricId: CONVERSION_METRIC_ID });
         await new Promise((r) => setTimeout(r, 300));
         const series = await queryFlowSeries({ statistics: ['opens_unique', 'clicks_unique', 'delivered'], filter, timeframe: 'last_365_days', interval: 'monthly', conversionMetricId: CONVERSION_METRIC_ID });
         setReportData(values);

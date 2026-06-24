@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { queryFormValues, queryFormSeries } from '../api/klaviyo';
+import { queryFormValues } from '../api/klaviyo';
 import MetricCard from './MetricCard';
-import TimeSeriesChart from './TimeSeriesChart';
 
 const CONVERSION_METRIC_ID = import.meta.env.VITE_KLAVIYO_CONVERSION_METRIC_ID;
 
@@ -13,7 +12,6 @@ const FORM_STATS = [
 
 export default function FormsPanel({ loading }) {
   const [reportData, setReportData] = useState(null);
-  const [seriesData, setSeriesData] = useState(null);
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState(null);
 
@@ -22,11 +20,8 @@ export default function FormsPanel({ loading }) {
       setFetching(true);
       setError(null);
       try {
-        const values = await queryFormValues({ statistics: FORM_STATS, timeframe: 'last_30_days', conversionMetricId: CONVERSION_METRIC_ID });
-        await new Promise((r) => setTimeout(r, 300));
-        const series = await queryFormSeries({ statistics: ['submits'], timeframe: 'last_30_days', interval: 'daily', conversionMetricId: CONVERSION_METRIC_ID });
+        const values = await queryFormValues({ statistics: FORM_STATS, timeframe: 'last_365_days', conversionMetricId: CONVERSION_METRIC_ID });
         setReportData(values);
-        setSeriesData(series);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -49,35 +44,6 @@ export default function FormsPanel({ loading }) {
     return merged;
   }, [results]);
 
-  const seriesByDate = useMemo(() => {
-    if (!seriesData?.data?.attributes?.results?.length) return [];
-    const results = seriesData.data.attributes.results;
-
-    let maxLen = 0;
-    results.forEach((r) => {
-      Object.values(r.statistics).forEach((arr) => {
-        if (Array.isArray(arr) && arr.length > maxLen) maxLen = arr.length;
-      });
-    });
-
-    const rows = [];
-    for (let i = 0; i < maxLen; i++) {
-      const row = { index: i, displayDate: `Day ${i + 1}` };
-      results.forEach((r) => {
-        Object.entries(r.statistics).forEach(([key, arr]) => {
-          if (Array.isArray(arr)) {
-            const val = arr[i];
-            if (val !== null && val !== undefined && !isNaN(parseFloat(val))) {
-              row[key] = (row[key] || 0) + parseFloat(val);
-            }
-          }
-        });
-      });
-      rows.push(row);
-    }
-    return rows;
-  }, [seriesData]);
-
   const formatLabel = (key) => key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
@@ -91,32 +57,20 @@ export default function FormsPanel({ loading }) {
       )}
 
       {!fetching && results.length > 0 && (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(aggregateStats).map(([stat, val]) => (
-              <MetricCard
-                key={stat}
-                label={formatLabel(stat)}
-                value={val}
-                isRate={stat.includes('rate')}
-              />
-            ))}
-          </div>
-
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-            <h3 className="text-sm font-medium text-slate-300 mb-4">Submissions Over Time (30 days)</h3>
-            <TimeSeriesChart
-              seriesData={seriesByDate}
-              chartMetrics={Object.keys(aggregateStats).slice(0, 3)}
-              formatLabel={formatLabel}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Object.entries(aggregateStats).map(([stat, val]) => (
+            <MetricCard
+              key={stat}
+              label={formatLabel(stat)}
+              value={val}
             />
-          </div>
-        </>
+          ))}
+        </div>
       )}
 
       {!fetching && results.length === 0 && (
         <div className="text-slate-500 text-sm py-8 text-center">
-          No form submission data available in the last 30 days.
+          No form submission data available in the last 365 days.
         </div>
       )}
     </div>
