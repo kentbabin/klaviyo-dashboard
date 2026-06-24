@@ -63,6 +63,16 @@ export async function getFlows() {
   return data;
 }
 
+// Get all forms (cached for 5 minutes)
+export async function getForms() {
+  const cacheKey = 'forms';
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+  const data = await klaviyoFetch('/forms?page[size]=100');
+  setCached(cacheKey, data);
+  return data;
+}
+
 // Get all campaigns (channel filter is required by Klaviyo API, cached for 5 minutes)
 export async function getCampaigns(channel = 'email') {
   const cacheKey = `campaigns_${channel}`;
