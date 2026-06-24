@@ -37,7 +37,7 @@ export default function FlowsPanel({ flows, loading }) {
         const filter = `equals(flow_id,'${selectedFlow.id}')`;
         const values = await queryFlowValues({ statistics: FLOW_STATS, filter, timeframe: 'last_30_days', conversionMetricId: CONVERSION_METRIC_ID });
         await new Promise((r) => setTimeout(r, 300));
-        const series = await queryFlowSeries({ statistics: ['opens_unique', 'clicks_unique', 'delivered'], filter, timeframe: 'last_30_days', interval: 'daily', conversionMetricId: CONVERSION_METRIC_ID });
+        const series = await queryFlowSeries({ statistics: ['opens_unique', 'clicks_unique', 'delivered'], filter, timeframe: 'last_365_days', interval: 'monthly', conversionMetricId: CONVERSION_METRIC_ID });
         setReportData(values);
         setSeriesData(series);
       } catch (err) {
@@ -57,7 +57,6 @@ export default function FlowsPanel({ flows, loading }) {
     const merged = {};
     results.forEach((r) => {
       Object.entries(r.statistics).forEach(([key, val]) => {
-        // Values in the "values" endpoint are single numbers
         if (typeof val === 'number') {
           merged[key] = (merged[key] || 0) + val;
         }
@@ -66,13 +65,13 @@ export default function FlowsPanel({ flows, loading }) {
     return merged;
   }, [results]);
 
-  // Series: each result has statistics with arrays (daily values indexed by position)
-  // Build chart data: array of { displayDate, recipients, opens, clicks, ... }
+  // Series: each result has statistics with arrays indexed by date_times
+  // Build chart data: array of { displayDate, opens_unique, clicks_unique, delivered }
   const seriesChartData = useMemo(() => {
     if (!seriesData?.data?.attributes?.results?.length) return [];
     const seriesResults = seriesData.data.attributes.results;
+    const dateTimes = seriesData.data.attributes.date_times || [];
 
-    // Find the max length of any statistics array
     let maxLen = 0;
     seriesResults.forEach((r) => {
       Object.values(r.statistics).forEach((arr) => {
@@ -80,10 +79,9 @@ export default function FlowsPanel({ flows, loading }) {
       });
     });
 
-    // Build per-day aggregated values
     const rows = [];
     for (let i = 0; i < maxLen; i++) {
-      const row = { index: i, displayDate: `Day ${i + 1}` };
+      const row = { index: i, displayDate: dateTimes[i] ? dateTimes[i].slice(0, 10) : `Day ${i + 1}` };
       seriesResults.forEach((r) => {
         Object.entries(r.statistics).forEach(([key, arr]) => {
           if (Array.isArray(arr)) {
@@ -147,7 +145,7 @@ export default function FlowsPanel({ flows, loading }) {
           </div>
 
           <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-            <h3 className="text-sm font-medium text-slate-300 mb-4">Performance Over Time (30 days)</h3>
+            <h3 className="text-sm font-medium text-slate-300 mb-4">Performance Over Time (365 days)</h3>
             <TimeSeriesChart
               seriesData={seriesChartData}
               chartMetrics={['opens_unique', 'clicks_unique', 'delivered']}

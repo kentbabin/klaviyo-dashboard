@@ -30,10 +30,20 @@ export default function TimeSeriesChart({ seriesData, chartMetrics, formatLabel 
     return <div className="text-slate-500 text-sm py-8 text-center">No time-series data available.</div>;
   }
 
+  // Format dates for display
+  const formattedData = seriesData.map((row) => {
+    if (row.displayDate && row.displayDate.length === 10 && row.displayDate.includes('-')) {
+      const [year, month] = row.displayDate.split('-');
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return { ...row, displayDate: `${months[parseInt(month, 10) - 1]} ${year}` };
+    }
+    return row;
+  });
+
   return (
     <div className="h-72">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={seriesData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+        <LineChart data={formattedData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
           <XAxis
             dataKey="displayDate"
