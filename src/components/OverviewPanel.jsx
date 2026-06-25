@@ -11,6 +11,7 @@ function formatLabel(key) {
 
 export default function OverviewPanel({ campaigns }) {
   const [campaignStats, setCampaignStats] = useState({});
+  const [netChange, setNetChange] = useState(null);
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState(null);
 
@@ -41,6 +42,9 @@ export default function OverviewPanel({ campaigns }) {
 
         // Map stats by campaign_id (from groupings)
         const byCampaign = {};
+        let totalDelivered = 0;
+        let totalUnsubscribes = 0;
+
         res.data?.attributes?.results?.forEach((r) => {
           const campaignId = r.groupings?.campaign_id;
           if (!campaignId) return;
@@ -50,11 +54,14 @@ export default function OverviewPanel({ campaigns }) {
           Object.entries(r.statistics).forEach(([k, v]) => {
             if (typeof v === 'number') {
               byCampaign[campaignId][k] = (byCampaign[campaignId][k] || 0) + v;
+              if (k === 'delivered') totalDelivered += v;
+              if (k === 'unsubscribes') totalUnsubscribes += v;
             }
           });
         });
 
         setCampaignStats(byCampaign);
+        setNetChange(totalDelivered - totalUnsubscribes);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -69,6 +76,22 @@ export default function OverviewPanel({ campaigns }) {
       {error && (
         <div className="p-3 bg-red-900/30 border border-red-700 rounded text-red-300 text-sm">{error}</div>
       )}
+
+      {/* Net Subscriber Change */}
+      <div>
+        <h2 className="text-sm font-medium text-slate-400 mb-4">List Activity (Last 365 Days)</h2>
+        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
+          <div className="flex items-baseline gap-3">
+            <span className="text-2xl font-bold text-white">
+              {fetching ? '—' : netChange !== null ? (netChange >= 0 ? '+' : '') + netChange.toLocaleString() : '—'}
+            </span>
+            <span className="text-sm text-slate-400">net delivered - unsubscribes</span>
+          </div>
+          <p className="text-xs text-slate-500 mt-2">
+            Approximate net list change across recent campaigns. For exact subscriber counts, add profiles:read scope to API key.
+          </p>
+        </div>
+      </div>
 
       {/* Recent Campaigns */}
       <div>
