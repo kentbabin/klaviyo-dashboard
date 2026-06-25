@@ -26,7 +26,7 @@ export default function OverviewPanel({ campaigns }) {
     if (recentCampaigns.length === 0) return;
 
     const campaignIds = recentCampaigns.map((c) => c.id);
-    const idFilter = campaignIds.map((id) => `equals(campaign_id,'${id}')`).join(',');
+    const idFilter = `contains-any(campaign_id,[${campaignIds.map(id => `'${id}'`).join(',')}])`;
 
     async function fetchStats() {
       setFetching(true);
@@ -34,15 +34,16 @@ export default function OverviewPanel({ campaigns }) {
       try {
         const res = await queryCampaignValues({
           statistics: STATS,
-          timeframe: { key: 'last_365_days' },
+          timeframe: 'last_365_days',
           conversionMetricId: CONVERSION_METRIC_ID,
-          filter: `any(${idFilter})`,
+          filter: idFilter,
         });
 
-        // Map stats by campaign_id
+        // Map stats by campaign_id (from groupings)
         const byCampaign = {};
         res.data?.attributes?.results?.forEach((r) => {
-          const campaignId = r.campaign_id;
+          const campaignId = r.groupings?.campaign_id;
+          if (!campaignId) return;
           if (!byCampaign[campaignId]) {
             byCampaign[campaignId] = {};
           }
