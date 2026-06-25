@@ -6,7 +6,6 @@ import TimeSeriesChart from './TimeSeriesChart';
 const CONVERSION_METRIC_ID = import.meta.env.VITE_KLAVIYO_CONVERSION_METRIC_ID;
 
 const FLOW_STATS = [
-  'recipients',
   'delivered',
   'opens_unique',
   'clicks_unique',

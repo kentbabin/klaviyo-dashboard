@@ -5,7 +5,6 @@ import MetricCard from './MetricCard';
 const CONVERSION_METRIC_ID = import.meta.env.VITE_KLAVIYO_CONVERSION_METRIC_ID;
 
 const CAMPAIGN_STATS = [
-  'recipients',
   'delivered',
   'opens_unique',
   'clicks_unique',
@@ -94,20 +93,32 @@ export default function CampaignsPanel({ campaigns, loading }) {
       )}
 
       {!fetching && results.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {CAMPAIGN_STATS.map((stat) => (
-            <MetricCard
-              key={stat}
-              label={formatLabel(stat)}
-              value={aggregateStats[stat]}
-            />
-          ))}
-        </div>
+        <>
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-xs text-slate-500">Sent:</span>
+            <span className="text-sm text-slate-300">
+              {selectedCampaign?.attributes?.send_time
+                ? new Date(selectedCampaign.attributes.send_time).toLocaleString('en-US', {
+                    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+                  })
+                : '—'}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {CAMPAIGN_STATS.map((stat) => (
+              <MetricCard
+                key={stat}
+                label={formatLabel(stat)}
+                value={aggregateStats[stat]}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {!fetching && selectedCampaign && results.length === 0 && (
         <div className="text-slate-500 text-sm py-8 text-center">
-          No reporting data available for this campaign in the last 30 days.
+          No reporting data available for this campaign in the last 365 days.
         </div>
       )}
     </div>
