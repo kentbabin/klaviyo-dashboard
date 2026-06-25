@@ -77,18 +77,18 @@ export default function OverviewPanel({ campaigns }) {
         <div className="p-3 bg-red-900/30 border border-red-700 rounded text-red-300 text-sm">{error}</div>
       )}
 
-      {/* Net Subscriber Change */}
+      {/* Net Activity */}
       <div>
-        <h2 className="text-sm font-medium text-slate-400 mb-4">List Activity (Last 365 Days)</h2>
+        <h2 className="text-sm font-medium text-slate-400 mb-4">Net Campaign Activity (Last 365 Days)</h2>
         <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
           <div className="flex items-baseline gap-3">
             <span className="text-2xl font-bold text-white">
               {fetching ? '—' : netChange !== null ? (netChange >= 0 ? '+' : '') + netChange.toLocaleString() : '—'}
             </span>
-            <span className="text-sm text-slate-400">net delivered - unsubscribes</span>
+            <span className="text-sm text-slate-400">delivered minus unsubscribes</span>
           </div>
           <p className="text-xs text-slate-500 mt-2">
-            Approximate net list change across recent campaigns. For exact subscriber counts, add profiles:read scope to API key.
+            Approximate net list change across your 5 most recent campaigns. For exact subscriber counts, daily list tracking would need to be implemented externally.
           </p>
         </div>
       </div>
