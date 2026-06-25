@@ -3,11 +3,12 @@ import { getFlows, getCampaigns } from './api/klaviyo';
 import FlowsPanel from './components/FlowsPanel';
 import CampaignsPanel from './components/CampaignsPanel';
 import FormsPanel from './components/FormsPanel';
+import OverviewPanel from './components/OverviewPanel';
 
-const TABS = ['Flows', 'Campaigns', 'Forms'];
+const TABS = ['Overview', 'Flows', 'Campaigns', 'Forms'];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('Flows');
+  const [activeTab, setActiveTab] = useState('Overview');
   const [flows, setFlows] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
 
@@ -76,6 +77,7 @@ export default function App() {
           </div>
         )}
 
+        {activeTab === 'Overview' && <OverviewPanel campaigns={campaigns} loading={loading} />}
         {activeTab === 'Flows' && <FlowsPanel flows={flows} loading={loading} />}
         {activeTab === 'Campaigns' && <CampaignsPanel campaigns={campaigns} loading={loading} />}
         {activeTab === 'Forms' && <FormsPanel loading={loading} />}
