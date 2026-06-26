@@ -11,7 +11,7 @@ async function countListProfiles(listId) {
   if (cached !== null) return cached;
 
   let count = 0;
-  let url = `/lists/${listId}/profiles/?page_size=100`;
+  let url = `/lists/${listId}/profiles/?page_size=10`;
 
   while (url) {
     const response = await fetch(`/api/proxy?path=${encodeURIComponent(url)}`);
