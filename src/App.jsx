@@ -1,16 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getFlows, getCampaigns } from './api/klaviyo';
+import { getFlows, getCampaigns, getLists } from './api/klaviyo';
 import FlowsPanel from './components/FlowsPanel';
 import CampaignsPanel from './components/CampaignsPanel';
 import FormsPanel from './components/FormsPanel';
 import OverviewPanel from './components/OverviewPanel';
+import ListsPanel from './components/ListsPanel';
 
-const TABS = ['Overview', 'Flows', 'Campaigns', 'Forms'];
+const TABS = ['Overview', 'Flows', 'Campaigns', 'Forms', 'Lists'];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Overview');
   const [flows, setFlows] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
+  const [lists, setLists] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -22,8 +24,10 @@ export default function App() {
       // Fetch flows first, then campaigns (avoid concurrent 429s on initial load)
       const flowsRes = await getFlows();
       const campaignsRes = await getCampaigns('email');
+      const listsRes = await getLists();
       setFlows((flowsRes.data || []).filter((f) => f.attributes?.status !== 'draft'));
       setCampaigns((campaignsRes.data || []).filter((c) => !['Draft', 'Scheduled', 'Cancelled'].includes(c.attributes?.status)));
+      setLists(listsRes.data || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -81,6 +85,7 @@ export default function App() {
         {activeTab === 'Flows' && <FlowsPanel flows={flows} loading={loading} />}
         {activeTab === 'Campaigns' && <CampaignsPanel campaigns={campaigns} loading={loading} />}
         {activeTab === 'Forms' && <FormsPanel loading={loading} />}
+        {activeTab === 'Lists' && <ListsPanel lists={lists} loading={loading} />}
       </main>
     </div>
   );
