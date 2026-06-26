@@ -6,7 +6,7 @@ const PROXY_BASE = '/api/proxy';
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1000;
 
-async function klaviyoFetch(endpoint, options = {}, retryCount = 0) {
+export async function klaviyoFetch(endpoint, options = {}, retryCount = 0) {
   // Build URL with path as query param
   const mainPath = endpoint.split('?')[0];
   const queryString = endpoint.includes('?') ? endpoint.split('?')[1] : '';

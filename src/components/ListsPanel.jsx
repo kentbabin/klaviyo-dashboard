@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getCached, setCached } from '../api/cache';
+import { klaviyoFetch } from '../api/klaviyo';
 
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -10,14 +11,14 @@ async function countListProfiles(listId) {
   if (cached !== null) return cached;
 
   let count = 0;
-  let url = `/lists/${listId}/relationships/profiles/?page_size=100`;
+  let nextCursor = null;
 
-  while (url) {
-    const response = await fetch(`/api/proxy?path=${encodeURIComponent(url)}`);
-    const data = await response.json();
+  do {
+    const cursorParam = nextCursor ? `&page[cursor]=${nextCursor}` : '';
+    const data = await klaviyoFetch(`/lists/${listId}/relationships/profiles/?page_size=100${cursorParam}`);
     count += data.data?.length || 0;
-    url = data.links?.next || null;
-  }
+    nextCursor = data.links?.next ? new URL(data.links.next).searchParams.get('page[cursor]') : null;
+  } while (nextCursor);
 
   setCached(cacheKey, count);
   return count;
