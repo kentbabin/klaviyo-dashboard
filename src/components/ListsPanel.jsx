@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react';
 import { getCached, setCached } from '../api/cache';
 
-const CACHE_KEY = 'lists_counts';
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
-// Count profiles in a list by paginating through all pages
+// Count profiles in a list by paginating through the relationships endpoint
 async function countListProfiles(listId) {
   const cacheKey = `list_count_${listId}`;
   const cached = getCached(cacheKey, CACHE_TTL);
   if (cached !== null) return cached;
 
   let count = 0;
-  let url = `/lists/${listId}/profiles/?page_size=10`;
+  let url = `/lists/${listId}/relationships/profiles/?page_size=100`;
 
   while (url) {
     const response = await fetch(`/api/proxy?path=${encodeURIComponent(url)}`);
