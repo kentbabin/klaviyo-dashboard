@@ -164,6 +164,22 @@ export async function queryFormValues({ statistics, filter, timeframe = 'last_30
   return klaviyoFetch('/form-values-reports', { method: 'POST', body: JSON.stringify(body) });
 }
 
+// Query Metric Aggregates (for event-level data like subscribes, opens, clicks)
+export async function queryMetricAggregates({ metricId, measurements, filter, interval = 'day' }) {
+  const body = {
+    data: {
+      type: 'metric-aggregate',
+      attributes: {
+        metric_id: metricId,
+        measurements,
+        interval,
+        filter,
+      },
+    },
+  };
+  return klaviyoFetch('/metric-aggregates', { method: 'POST', body: JSON.stringify(body) });
+}
+
 // Form series report
 export async function queryFormSeries({ statistics, filter, timeframe = 'last_30_days', interval = 'daily', conversionMetricId }) {
   const body = {
