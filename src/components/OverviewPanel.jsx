@@ -11,6 +11,7 @@ const METRIC = {
   UNSUBSCRIBED_LIST: 'Xx8rjx',
   OPENED_EMAIL: 'W4a2xR',
   CLICKED_EMAIL: 'UfJ93n',
+  RECEIVED_EMAIL: 'XdyRrH',
 };
 
 // Date helpers
@@ -139,7 +140,7 @@ export default function OverviewPanel({ campaigns }) {
       setMetricsFetching(true);
       try {
         // Check if all metrics are cached
-        const metricIds = [METRIC.SUBSCRIBED_LIST, METRIC.UNSUBSCRIBED_LIST, METRIC.OPENED_EMAIL, METRIC.CLICKED_EMAIL];
+        const metricIds = [METRIC.SUBSCRIBED_LIST, METRIC.UNSUBSCRIBED_LIST, METRIC.OPENED_EMAIL, METRIC.CLICKED_EMAIL, METRIC.RECEIVED_EMAIL];
         const allCached = metricIds.every(id => getCachedMetric(`${id}_30`) !== null);
 
         if (allCached) {
@@ -152,6 +153,8 @@ export default function OverviewPanel({ campaigns }) {
             opensPrev: getCachedMetric(`${METRIC.OPENED_EMAIL}_60`) - getCachedMetric(`${METRIC.OPENED_EMAIL}_30`),
             clicks: getCachedMetric(`${METRIC.CLICKED_EMAIL}_30`),
             clicksPrev: getCachedMetric(`${METRIC.CLICKED_EMAIL}_60`) - getCachedMetric(`${METRIC.CLICKED_EMAIL}_30`),
+            delivered: getCachedMetric(`${METRIC.RECEIVED_EMAIL}_30`),
+            deliveredPrev: getCachedMetric(`${METRIC.RECEIVED_EMAIL}_60`) - getCachedMetric(`${METRIC.RECEIVED_EMAIL}_30`),
           });
           setMetricsFetching(false);
           return;
@@ -162,10 +165,12 @@ export default function OverviewPanel({ campaigns }) {
         const currUnsub = await fetchMetricSum(METRIC.UNSUBSCRIBED_LIST, ['count'], 30);
         const currOpens = await fetchMetricSum(METRIC.OPENED_EMAIL, ['unique'], 30);
         const currClicks = await fetchMetricSum(METRIC.CLICKED_EMAIL, ['unique'], 30);
+        const currDelivered = await fetchMetricSum(METRIC.RECEIVED_EMAIL, ['count'], 30);
         const prevSub = await fetchMetricSum(METRIC.SUBSCRIBED_LIST, ['count'], 60);
         const prevUnsub = await fetchMetricSum(METRIC.UNSUBSCRIBED_LIST, ['count'], 60);
         const prevOpens = await fetchMetricSum(METRIC.OPENED_EMAIL, ['unique'], 60);
         const prevClicks = await fetchMetricSum(METRIC.CLICKED_EMAIL, ['unique'], 60);
+        const prevDelivered = await fetchMetricSum(METRIC.RECEIVED_EMAIL, ['count'], 60);
 
         setMetrics({
           subscribed: currSub,
@@ -176,6 +181,8 @@ export default function OverviewPanel({ campaigns }) {
           opensPrev: prevOpens - currOpens,
           clicks: currClicks,
           clicksPrev: prevClicks - currClicks,
+          delivered: currDelivered,
+          deliveredPrev: prevDelivered - currDelivered,
         });
       } catch (err) {
         console.error('Metrics fetch failed:', err);
@@ -195,14 +202,18 @@ export default function OverviewPanel({ campaigns }) {
   const netSubPrev = metrics ? metrics.subscribedPrev - metrics.unsubscribedPrev : null;
   const subChangePct = calcPctChange(netSubChange ?? 0, netSubPrev ?? 0);
 
-  const openRate = metrics && metrics.subscribed > 0 ? (metrics.opens / metrics.subscribed) * 100 : 0;
-  const openRatePrev = metrics && metrics.subscribedPrev > 0 ? (metrics.opensPrev / metrics.subscribedPrev) * 100 : 0;
+  // Use delivered emails as denominator for rates (standard email metrics)
+  const delivered = metrics?.delivered || 0;
+  const deliveredPrev = metrics?.deliveredPrev || 0;
 
-  const clickRate = metrics && metrics.subscribed > 0 ? (metrics.clicks / metrics.subscribed) * 100 : 0;
-  const clickRatePrev = metrics && metrics.subscribedPrev > 0 ? (metrics.clicksPrev / metrics.subscribedPrev) * 100 : 0;
+  const openRate = delivered > 0 ? (metrics?.opens || 0) / delivered * 100 : 0;
+  const openRatePrev = deliveredPrev > 0 ? (metrics?.opensPrev || 0) / deliveredPrev * 100 : 0;
 
-  const unsubRate = metrics && metrics.subscribed > 0 ? (metrics.unsubscribed / metrics.subscribed) * 100 : 0;
-  const unsubRatePrev = metrics && metrics.subscribedPrev > 0 ? (metrics.unsubscribedPrev / metrics.subscribedPrev) * 100 : 0;
+  const clickRate = delivered > 0 ? (metrics?.clicks || 0) / delivered * 100 : 0;
+  const clickRatePrev = deliveredPrev > 0 ? (metrics?.clicksPrev || 0) / deliveredPrev * 100 : 0;
+
+  const unsubRate = delivered > 0 ? (metrics?.unsubscribed || 0) / delivered * 100 : 0;
+  const unsubRatePrev = deliveredPrev > 0 ? (metrics?.unsubscribedPrev || 0) / deliveredPrev * 100 : 0;
 
   return (
     <div className="space-y-6">
@@ -233,7 +244,7 @@ export default function OverviewPanel({ campaigns }) {
             <div className="text-2xl font-bold text-white">
               {metricsFetching ? '—' : `${openRate.toFixed(1)}%`}
             </div>
-            <div className="text-xs text-slate-500 mt-0.5">{metrics?.opens || 0} opens</div>
+            <div className="text-xs text-slate-500 mt-0.5">{metrics?.opens || 0} / {metrics?.delivered || 0} delivered</div>
           </div>
 
           {/* Click Rate */}
