@@ -165,6 +165,7 @@ export async function queryFormValues({ statistics, filter, timeframe = 'last_30
 }
 
 // Query Metric Aggregates (for event-level data like subscribes, opens, clicks)
+// Note: caching is handled in OverviewPanel via localStorage with 1-hour TTL
 export async function queryMetricAggregates({ metricId, measurements, filter, interval = 'day' }) {
   const body = {
     data: {

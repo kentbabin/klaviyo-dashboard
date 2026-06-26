@@ -11,7 +11,6 @@ const METRIC = {
   UNSUBSCRIBED_LIST: 'Xx8rjx',
   OPENED_EMAIL: 'W4a2xR',
   CLICKED_EMAIL: 'UfJ93n',
-  RECEIVED_EMAIL: 'XdyRrH',
 };
 
 // Date helpers
@@ -32,14 +31,49 @@ function buildDateFilter(start, end) {
   ];
 }
 
+// Cache helpers for metric aggregates (1 hour TTL)
+const METRICS_CACHE_PREFIX = 'kdash_metrics_';
+const METRICS_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+function getCachedMetric(key) {
+  try {
+    const raw = localStorage.getItem(METRICS_CACHE_PREFIX + key);
+    if (!raw) return null;
+    const { timestamp, data } = JSON.parse(raw);
+    if (Date.now() - timestamp > METRICS_CACHE_TTL) {
+      localStorage.removeItem(METRICS_CACHE_PREFIX + key);
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedMetric(key, data) {
+  try {
+    localStorage.setItem(METRICS_CACHE_PREFIX + key, JSON.stringify({ timestamp: Date.now(), data }));
+  } catch {
+    // ignore
+  }
+}
+
 async function fetchMetricSum(metricId, measurements, daysAgo) {
+  const cacheKey = `${metricId}_${daysAgo}`;
+  const cached = getCachedMetric(cacheKey);
+  if (cached !== null) return cached;
+
   const { start, end } = getDateRange(daysAgo);
   const filter = buildDateFilter(start, end);
   const res = await queryMetricAggregates({ metricId, measurements, filter, interval: 'day' });
   const attrData = res.data?.attributes?.data;
-  if (!attrData || attrData.length === 0) return 0;
-  const values = attrData[0]?.measurements?.[measurements[0]] || [];
-  return values.reduce((sum, v) => sum + (v || 0), 0);
+  let total = 0;
+  if (attrData && attrData.length > 0) {
+    const values = attrData[0]?.measurements?.[measurements[0]] || [];
+    total = values.reduce((sum, v) => sum + (v || 0), 0);
+  }
+  setCachedMetric(cacheKey, total);
+  return total;
 }
 
 export default function OverviewPanel({ campaigns }) {
@@ -99,24 +133,40 @@ export default function OverviewPanel({ campaigns }) {
     fetchStats();
   }, [recentCampaigns.length > 0 ? recentCampaigns.map((c) => c.id).join(',') : null]);
 
-  // Fetch subscriber metrics from Klaviyo events API
+  // Fetch subscriber metrics from Klaviyo events API (with caching)
   useEffect(() => {
     async function fetchMetrics() {
       setMetricsFetching(true);
       try {
-        // Fetch current 30-day and previous 30-day metrics in parallel
-        const [currSub, currUnsub, currOpens, currClicks, prevSub, prevUnsub, prevOpens, prevClicks] = await Promise.all([
-          fetchMetricSum(METRIC.SUBSCRIBED_LIST, ['count'], 30),
-          fetchMetricSum(METRIC.UNSUBSCRIBED_LIST, ['count'], 30),
-          fetchMetricSum(METRIC.OPENED_EMAIL, ['unique'], 30),
-          fetchMetricSum(METRIC.CLICKED_EMAIL, ['unique'], 30),
-          fetchMetricSum(METRIC.SUBSCRIBED_LIST, ['count'], 60),
-          fetchMetricSum(METRIC.UNSUBSCRIBED_LIST, ['count'], 60),
-          fetchMetricSum(METRIC.OPENED_EMAIL, ['unique'], 60),
-          fetchMetricSum(METRIC.CLICKED_EMAIL, ['unique'], 60),
-        ]);
+        // Check if all metrics are cached
+        const metricIds = [METRIC.SUBSCRIBED_LIST, METRIC.UNSUBSCRIBED_LIST, METRIC.OPENED_EMAIL, METRIC.CLICKED_EMAIL];
+        const allCached = metricIds.every(id => getCachedMetric(`${id}_30`) !== null);
 
-        // Subtract current period from previous to get the 30-60 day window
+        if (allCached) {
+          setMetrics({
+            subscribed: getCachedMetric(`${METRIC.SUBSCRIBED_LIST}_30`),
+            subscribedPrev: getCachedMetric(`${METRIC.SUBSCRIBED_LIST}_60`) - getCachedMetric(`${METRIC.SUBSCRIBED_LIST}_30`),
+            unsubscribed: getCachedMetric(`${METRIC.UNSUBSCRIBED_LIST}_30`),
+            unsubscribedPrev: getCachedMetric(`${METRIC.UNSUBSCRIBED_LIST}_60`) - getCachedMetric(`${METRIC.UNSUBSCRIBED_LIST}_30`),
+            opens: getCachedMetric(`${METRIC.OPENED_EMAIL}_30`),
+            opensPrev: getCachedMetric(`${METRIC.OPENED_EMAIL}_60`) - getCachedMetric(`${METRIC.OPENED_EMAIL}_30`),
+            clicks: getCachedMetric(`${METRIC.CLICKED_EMAIL}_30`),
+            clicksPrev: getCachedMetric(`${METRIC.CLICKED_EMAIL}_60`) - getCachedMetric(`${METRIC.CLICKED_EMAIL}_30`),
+          });
+          setMetricsFetching(false);
+          return;
+        }
+
+        // Fetch all needed metrics sequentially to respect rate limits
+        const currSub = await fetchMetricSum(METRIC.SUBSCRIBED_LIST, ['count'], 30);
+        const currUnsub = await fetchMetricSum(METRIC.UNSUBSCRIBED_LIST, ['count'], 30);
+        const currOpens = await fetchMetricSum(METRIC.OPENED_EMAIL, ['unique'], 30);
+        const currClicks = await fetchMetricSum(METRIC.CLICKED_EMAIL, ['unique'], 30);
+        const prevSub = await fetchMetricSum(METRIC.SUBSCRIBED_LIST, ['count'], 60);
+        const prevUnsub = await fetchMetricSum(METRIC.UNSUBSCRIBED_LIST, ['count'], 60);
+        const prevOpens = await fetchMetricSum(METRIC.OPENED_EMAIL, ['unique'], 60);
+        const prevClicks = await fetchMetricSum(METRIC.CLICKED_EMAIL, ['unique'], 60);
+
         setMetrics({
           subscribed: currSub,
           subscribedPrev: prevSub - currSub,
@@ -162,8 +212,8 @@ export default function OverviewPanel({ campaigns }) {
 
       {/* Subscriber Growth */}
       <div>
-        <h2 className="text-sm font-medium text-slate-400 mb-4">Subscriber Growth (Last 30 Days)</h2>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <h2 className="text-sm font-medium text-slate-400 mb-4">Overview (Last 30 Days)</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Net Change */}
           <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
             <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Net Subscribers</div>
@@ -203,16 +253,9 @@ export default function OverviewPanel({ campaigns }) {
             </div>
             <div className="text-xs text-slate-500 mt-0.5">{metrics?.unsubscribed || 0} unsubs</div>
           </div>
-
-          {/* Bounce Rate placeholder */}
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 opacity-50">
-            <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Bounce Rate</div>
-            <div className="text-2xl font-bold text-white">—</div>
-            <div className="text-xs text-slate-500 mt-0.5">via campaigns</div>
-          </div>
         </div>
         <p className="text-xs text-slate-500 mt-2">
-          Rates calculated from email events (opens, clicks, unsubscribes) in the last 30 days vs the previous 30 days.
+          Rates calculated from email events in the last 30 days vs the previous 30 days. Cached for 1 hour.
         </p>
       </div>
 
