@@ -30,6 +30,8 @@ export default function ListsPanel({ lists }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!lists || lists.length === 0) return;
+
     // Check if all counts are cached
     const allCached = lists.every((l) => getCached(`list_count_${l.id}`, CACHE_TTL) !== null);
     if (allCached) {
@@ -58,7 +60,7 @@ export default function ListsPanel({ lists }) {
       }
     }
     fetchCounts();
-  }, [lists]);
+  }, [lists.length, lists.map(l => l.id).join(',')]);
 
   const totalProfiles = Object.values(counts).reduce((sum, c) => sum + c, 0);
 
