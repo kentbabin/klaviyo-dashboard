@@ -73,14 +73,31 @@ export async function getForms() {
   return data;
 }
 
-// Get all lists (cached for 5 minutes)
+// Get all lists (cached for 5 minutes, paginates through all pages)
 export async function getLists() {
   const cacheKey = 'lists';
   const cached = getCached(cacheKey);
   if (cached) return cached;
-  const data = await klaviyoFetch('/lists?page[size]=100');
-  setCached(cacheKey, data);
-  return data;
+
+  let allData = [];
+  let url = '/lists?page[size]=10';
+
+  while (url) {
+    const data = await klaviyoFetch(url);
+    allData = allData.concat(data.data || []);
+    // Check for next page
+    const nextLink = data.links?.next;
+    if (nextLink) {
+      // Extract just the path and query from the full URL
+      url = nextLink.replace('https://a.klaviyo.com', '');
+    } else {
+      url = null;
+    }
+  }
+
+  const result = { data: allData };
+  setCached(cacheKey, result);
+  return result;
 }
 
 // Get all campaigns (channel filter is required by Klaviyo API, cached for 5 minutes)
